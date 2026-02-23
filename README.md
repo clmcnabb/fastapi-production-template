@@ -86,6 +86,43 @@ docker compose exec api alembic upgrade head
 - `POST /api/v1/users/`
 - `GET /api/v1/users/me`
 - `POST /api/v1/predict/`
+- `GET /api/v1/stream/sse`
+- `POST /api/v1/stream/messages`
+- `WS /api/v1/stream/ws`
+
+### Realtime examples (SSE + WebSocket)
+
+`/api/v1/stream/messages` now publishes through Redis Pub/Sub when `REALTIME_REDIS_URL` is set, so events fan out across multiple API replicas. If Redis is unavailable, the app falls back to in-process fanout for single-instance operation.
+
+1. Authenticate and capture token:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=dev@example.com&password=secret123" | jq -r .access_token)
+```
+
+2. Open an SSE stream:
+
+```bash
+curl -N http://localhost:8000/api/v1/stream/sse \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+3. Publish a message over HTTP (received by SSE and WebSocket clients):
+
+```bash
+curl -X POST http://localhost:8000/api/v1/stream/messages \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello from http"}'
+```
+
+4. Connect WebSocket (token as query param):
+
+```bash
+wscat -c "ws://localhost:8000/api/v1/stream/ws?token=$TOKEN"
+```
 
 ## Environment variables
 
@@ -98,6 +135,8 @@ See `.env.example`:
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `LOG_LEVEL`
 - `MODEL_PATH`
+- `REALTIME_REDIS_URL`
+- `REALTIME_REDIS_CHANNEL`
 
 ## Deployment notes (AWS/Azure)
 

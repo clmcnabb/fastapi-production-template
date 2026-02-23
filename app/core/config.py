@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     model_path: str = Field(default="app/ml/dummy_model.pkl", alias="MODEL_PATH")
+    realtime_redis_url: str | None = Field(default=None, alias="REALTIME_REDIS_URL")
+    realtime_redis_channel: str = Field(default="realtime:events", alias="REALTIME_REDIS_CHANNEL")
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
@@ -30,6 +32,14 @@ class Settings(BaseSettings):
         }:
             raise ValueError("JWT_SECRET_KEY must be set to a secure value in production")
         return value
+
+    @field_validator("realtime_redis_url")
+    @classmethod
+    def empty_redis_url_to_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
 
 
 @lru_cache(maxsize=1)

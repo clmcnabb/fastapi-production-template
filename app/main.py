@@ -7,8 +7,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
+from app.core.config import settings
 from app.core.logging_config import configure_logging
 from app.services.prediction_service import preload_model
+from app.services.realtime_service import realtime_hub
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     preload_model()
-    yield
+    realtime_hub.configure(settings.realtime_redis_url, settings.realtime_redis_channel)
+    await realtime_hub.start()
+    try:
+        yield
+    finally:
+        await realtime_hub.stop()
 
 
 def create_app() -> FastAPI:
